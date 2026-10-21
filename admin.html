@@ -13,6 +13,10 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <!-- ☁️ FIREBASE SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
     <style>
         :root{
             --color-primary: #e11d48;
@@ -22,8 +26,13 @@
             font-family: 'Hind Siliguri', sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 flex flex-col min-h-screen select-none pb-12">
@@ -44,7 +53,7 @@
                     <i class="fa-solid fa-lock-open"></i> প্যানেলে প্রবেশ করুন
                 </button>
             </form>
-            <p class="text-[10px] text-slate-500">ডিফল্ট পাসওয়ার্ড: <span class="font-mono text-rose-400">1234</span></p>
+            <p class="text-[10px] text-slate-500">ডিফল্ট পাসওয়ার্ড: <span class="font-mono text-rose-400">....</span></p>
         </div>
     </div>
 
@@ -58,7 +67,7 @@
                     <i class="fa-solid fa-shield-halved"></i> 𝐀𝐝𝐬𝐄𝐚𝐫𝐧𝐏𝐫𝐨 মাস্টার অ্যাডমিন
                 </h2>
                 <div class="flex items-center gap-1.5 mt-0.5">
-                    <span id="sync-indicator-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                     <span class="text-[10px] text-slate-400" id="sync-status-text">রিয়েল-টাইম ক্লাউড সিঙ্ক চালু</span>
                 </div>
             </div>
@@ -281,21 +290,18 @@
         <div id="admin-tab-database" class="hidden space-y-4">
             <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
                 <h4 class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                    <i class="fa-solid fa-cloud"></i> ফায়ারবেস রিয়েলটাইম ডাটাবেজ
+                    <i class="fa-solid fa-cloud"></i> ফায়ারবেস ডাটাবেজ কনফিগারেশন
                 </h4>
-                <p class="text-[11px] text-slate-300 leading-relaxed">
-                    সব ফোনে রিয়েলটাইম সিঙ্ক নিশ্চিত করতে আপনার Firebase Realtime Database URL এখানে দিন:
-                </p>
                 <div>
                     <label class="text-[11px] text-slate-400 block mb-1">Firebase Database URL</label>
-                    <input type="text" id="admin-firebase-dburl" placeholder="https://your-project-default-rtdb.firebaseio.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none font-mono">
+                    <input type="text" id="admin-firebase-dburl" placeholder="https://adsearnpro-e6346-default-rtdb.firebaseio.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none font-mono">
                 </div>
                 <div>
-                    <label class="text-[11px] text-slate-400 block mb-1">Firebase API Key (ঐচ্ছিক)</label>
-                    <input type="text" id="admin-firebase-apikey" placeholder="AIzaSyA..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none font-mono">
+                    <label class="text-[11px] text-slate-400 block mb-1">Firebase API Key</label>
+                    <input type="text" id="admin-firebase-apikey" placeholder="AIzaSyCxK74v-nAIGExipAWBJoqGzSP6gQvhSbs" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none font-mono">
                 </div>
-                <button onclick="adminSaveFirebaseConfig()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-floppy-disk"></i> ডাটাবেজ সেভ ও কানেক্ট করুন
+                <button onclick="adminSaveFirebaseConfig()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition">
+                    ডাটাবেজ সেভ করুন
                 </button>
             </div>
 
@@ -474,8 +480,16 @@
     </div>
 
     <script>
-        // 🌐 কেন্দ্রীয় ক্লাউড ডেটাবেজ ব্যাকআপ রিলে (সকল ফোনে সিঙ্কের জন্য)
-        const MASTER_CLOUD_RELAY = 'https://api.jsonbin.io/v3/b/661ff979ad19ca34f85e4922';
+        // 🔥 আপনার অরিজিনাল ফায়ারবেস কনফিগারেশন
+        const ORIGINAL_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCxK74v-nAIGExipAWBJoqGzSP6gQvhSbs",
+            authDomain: "adsearnpro-e6346.firebaseapp.com",
+            databaseURL: "https://adsearnpro-e6346-default-rtdb.firebaseio.com",
+            projectId: "adsearnpro-e6346",
+            storageBucket: "adsearnpro-e6346.firebasestorage.app",
+            messagingSenderId: "566134627308",
+            appId: "1:566134627308:web:4a70df112e818b95c17ec9"
+        };
 
         let adminState = {
             adminPass: localStorage.getItem('adminPass') || '1234',
@@ -483,7 +497,7 @@
             botAppName: localStorage.getItem('botAppName') || 'app',
             supportLink: localStorage.getItem('supportLink') || 'https://t.me/YourSupport',
             botToken: localStorage.getItem('botToken') || '',
-            firebaseConfig: JSON.parse(localStorage.getItem('firebaseConfig') || '{"apiKey":"","databaseURL":""}'),
+            firebaseConfig: JSON.parse(localStorage.getItem('firebaseConfig') || JSON.stringify(ORIGINAL_FIREBASE_CONFIG)),
 
             adReward: parseFloat(localStorage.getItem('adReward')) || 0.50,
             adDailyLimit: parseInt(localStorage.getItem('adDailyLimit')) || 50,
@@ -511,7 +525,7 @@
                 sub: 'প্রতি রেফারে নিশ্চিত বোনাস লাভ করুন',
                 link: 'https://t.me/adsearn_pro_bot'
             })),
-            notice: localStorage.getItem('appNotice') || 'বিকাশ এবং নগদে সর্বনিম্ন টাকা হলেই পেমেন্ট রিকোয়েস্ট দিতে পারবেন। দ্রুত পেমেন্ট ক্লিয়ার করা হয়।',
+            notice: localStorage.getItem('appNotice') || 'বিকাশ এবং নগদে সর্বনিম্ন টাকা হলেই পেমেন্ট রিকোয়েস্ট দিতে পারবেন। দ্রুততম সময়ে পেমেন্ট কমপ্লিট করা হয়।',
 
             tasks: JSON.parse(localStorage.getItem('tasksList') || '[]'),
             mandatoryChannels: JSON.parse(localStorage.getItem('mandatoryChannels') || '[]'),
@@ -520,37 +534,40 @@
             users: JSON.parse(localStorage.getItem('globalUsersList') || '[]')
         };
 
+        let fbAdminDbRef = null;
+
+        function initAdminFirebase() {
+            try {
+                const conf = adminState.firebaseConfig?.databaseURL ? adminState.firebaseConfig : ORIGINAL_FIREBASE_CONFIG;
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(conf);
+                }
+                fbAdminDbRef = firebase.database().ref('adsearn_pro_v2_data');
+
+                // লাইভ ক্লাউড চেঞ্জ লিসেনার
+                fbAdminDbRef.on('value', snapshot => {
+                    const data = snapshot.val();
+                    if (data) {
+                        CloudDatabase.applyCloudState(data);
+                    }
+                });
+            } catch(e) {
+                console.warn('Firebase admin error:', e);
+            }
+        }
+
         const CloudDatabase = {
             async pull() {
                 try {
-                    let cloudData = null;
-
-                    // ১. ফায়ারবেস থেকে মূল ডাটা পুল
-                    if (adminState.firebaseConfig?.databaseURL) {
-                        const cleanUrl = adminState.firebaseConfig.databaseURL.replace(/\/$/, '');
-                        const fbRes = await fetch(`${cleanUrl}/adsearn_pro_v2_data.json`);
-                        if (fbRes.ok) {
-                            cloudData = await fbRes.json();
-                            document.getElementById('sync-status-text').innerText = 'ফায়ারবেস লাইভ সিঙ্ক সক্রিয়';
-                            document.getElementById('sync-indicator-dot').className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
-                        }
+                    const cleanUrl = (adminState.firebaseConfig?.databaseURL || ORIGINAL_FIREBASE_CONFIG.databaseURL).replace(/\/$/, '');
+                    const fbRes = await fetch(`${cleanUrl}/adsearn_pro_v2_data.json`);
+                    if (fbRes.ok) {
+                        const fbData = await fbRes.json();
+                        if (fbData) this.applyCloudState(fbData);
                     }
-
-                    // ২. ক্লাউড ব্যাকআপ রিলে থেকে পুল
-                    if (!cloudData) {
-                        const res = await fetch(MASTER_CLOUD_RELAY, { headers: { 'Accept': 'application/json' } });
-                        if (res.ok) {
-                            const resJson = await res.json();
-                            cloudData = resJson.record || resJson;
-                            document.getElementById('sync-status-text').innerText = 'ক্লাউড রিলে সিঙ্ক সক্রিয়';
-                            document.getElementById('sync-indicator-dot').className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
-                        }
-                    }
-
-                    if (cloudData) {
-                        this.applyCloudState(cloudData);
-                    }
-                } catch(e) {}
+                } catch(e) {
+                    console.warn('Sync notice:', e);
+                }
             },
 
             async push() {
@@ -587,20 +604,16 @@
                 };
 
                 try {
-                    if (adminState.firebaseConfig?.databaseURL) {
-                        const cleanUrl = adminState.firebaseConfig.databaseURL.replace(/\/$/, '');
+                    if (fbAdminDbRef) {
+                        fbAdminDbRef.set(payload).catch(() => {});
+                    } else {
+                        const cleanUrl = (adminState.firebaseConfig?.databaseURL || ORIGINAL_FIREBASE_CONFIG.databaseURL).replace(/\/$/, '');
                         fetch(`${cleanUrl}/adsearn_pro_v2_data.json`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(payload)
                         }).catch(() => {});
                     }
-
-                    fetch(MASTER_CLOUD_RELAY, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    }).catch(() => {});
                 } catch(e) {}
             },
 
@@ -616,7 +629,6 @@
                     if (c.targetBonuses) adminState.targetBonuses = c.targetBonuses;
                     if (c.paymentMethods) adminState.paymentMethods = c.paymentMethods;
                     if (c.adReward !== undefined) adminState.adReward = c.adReward;
-                    if (c.adDailyLimit !== undefined) adminState.adDailyLimit = c.adDailyLimit;
                     if (c.refReward !== undefined) adminState.refReward = c.refReward;
                     if (c.minWithdraw !== undefined) adminState.minWithdraw = c.minWithdraw;
                     if (c.requireAllTasksForWithdraw !== undefined) adminState.requireAllTasksForWithdraw = c.requireAllTasksForWithdraw;
@@ -631,22 +643,14 @@
                     if (c.theme) adminState.theme = c.theme;
                     if (c.monetagZoneId) adminState.monetagZoneId = c.monetagZoneId;
                     if (c.monetagSdk) adminState.monetagSdk = c.monetagSdk;
-                    if (c.firebaseConfig && c.firebaseConfig.databaseURL) {
-                        adminState.firebaseConfig = c.firebaseConfig;
-                    }
+                    if (c.firebaseConfig && c.firebaseConfig.databaseURL) adminState.firebaseConfig = c.firebaseConfig;
                 }
 
                 if (Array.isArray(cloud.withdrawals)) adminState.withdrawals = cloud.withdrawals;
-
-                if (Array.isArray(cloud.users)) {
-                    const userMap = new Map();
-                    adminState.users.forEach(u => { if (u && u.id) userMap.set(String(u.id), u); });
-                    cloud.users.forEach(u => { if (u && u.id) userMap.set(String(u.id), u); });
-                    adminState.users = Array.from(userMap.values());
-                }
+                if (Array.isArray(cloud.users)) adminState.users = cloud.users;
 
                 saveLocalCache();
-                if (localStorage.getItem('admin_authenticated') === 'true') {
+                if (sessionStorage.getItem('admin_authenticated') === 'true') {
                     renderAdminPanel();
                 }
             }
@@ -667,7 +671,6 @@
             localStorage.setItem('supportLink', adminState.supportLink);
             localStorage.setItem('botToken', adminState.botToken);
             localStorage.setItem('adReward', adminState.adReward);
-            localStorage.setItem('adDailyLimit', adminState.adDailyLimit);
             localStorage.setItem('refReward', adminState.refReward);
             localStorage.setItem('minWithdraw', adminState.minWithdraw);
             localStorage.setItem('requireAllTasksForWithdraw', adminState.requireAllTasksForWithdraw);
@@ -687,15 +690,14 @@
             renderAdminPanel();
         }
 
-        /* 🔒 স্থায়ী ও নিরাপদ অ্যাডমিন লগইন (সকল ফোনে সেভ থাকবে) */
+        /* Authentication */
         async function handleAdminLogin(e) {
             e.preventDefault();
             const pass = document.getElementById('login-pass-input').value.trim();
             await CloudDatabase.pull();
 
             if (pass === adminState.adminPass) {
-                // স্থায়ী লগইন (localStorage এ সেভ থাকবে)
-                localStorage.setItem('admin_authenticated', 'true');
+                sessionStorage.setItem('admin_authenticated', 'true');
                 document.getElementById('admin-login-screen').classList.add('hidden');
                 document.getElementById('admin-dashboard-container').classList.remove('hidden');
                 renderAdminPanel();
@@ -706,7 +708,7 @@
         }
 
         function handleAdminLogout() {
-            localStorage.removeItem('admin_authenticated');
+            sessionStorage.removeItem('admin_authenticated');
             document.getElementById('admin-dashboard-container').classList.add('hidden');
             document.getElementById('admin-login-screen').classList.remove('hidden');
             document.getElementById('login-pass-input').value = '';
@@ -715,7 +717,7 @@
         function manualCloudSync() {
             CloudDatabase.pull().then(() => {
                 renderAdminPanel();
-                Swal.fire({ icon: 'success', title: 'ডাটা রিফ্রেশ সম্পন্ন!', timer: 1000, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: 'ডাটাবেজ রিফ্রেশ সম্পন্ন!', timer: 1000, showConfirmButton: false });
             });
         }
 
@@ -836,13 +838,12 @@
         }
 
         function adminSaveFirebaseConfig() {
-            const url = document.getElementById('admin-firebase-dburl').value.trim();
-            const key = document.getElementById('admin-firebase-apikey').value.trim();
-
-            adminState.firebaseConfig = { databaseURL: url, apiKey: key };
+            adminState.firebaseConfig = {
+                databaseURL: document.getElementById('admin-firebase-dburl').value.trim(),
+                apiKey: document.getElementById('admin-firebase-apikey').value.trim()
+            };
             saveAdminState();
-
-            Swal.fire({ icon: 'success', title: 'ডাটাবেজ সংরক্ষিত হয়েছে!', text: 'সকল ফোনে রিয়েলটাইম সিঙ্ক কার্যকর হবে।' });
+            Swal.fire({ icon: 'success', title: 'ডাটাবেজ কনফিগারেশন সব ডিভাইসে সিঙ্ক হয়েছে!' });
         }
 
         function adminAddMandatoryGateChannel() {
@@ -913,7 +914,7 @@
             document.getElementById('admin-monetag-zone').value = adminState.monetagZoneId;
             document.getElementById('admin-monetag-sdk').value = adminState.monetagSdk;
             document.getElementById('admin-ad-reward').value = adminState.adReward;
-            document.getElementById('admin-ad-limit').value = adminState.adDailyLimit || 50;
+            document.getElementById('admin-ad-limit').value = adminState.adDailyLimit;
             document.getElementById('admin-ref-reward').value = adminState.refReward;
 
             document.getElementById('admin-bot-username-input').value = adminState.botUsername || 'adsearn_pro_bot';
@@ -922,8 +923,8 @@
             document.getElementById('admin-bot-token-input').value = adminState.botToken;
 
             if (adminState.firebaseConfig) {
-                document.getElementById('admin-firebase-dburl').value = adminState.firebaseConfig.databaseURL || '';
-                document.getElementById('admin-firebase-apikey').value = adminState.firebaseConfig.apiKey || '';
+                document.getElementById('admin-firebase-dburl').value = adminState.firebaseConfig.databaseURL || ORIGINAL_FIREBASE_CONFIG.databaseURL;
+                document.getElementById('admin-firebase-apikey').value = adminState.firebaseConfig.apiKey || ORIGINAL_FIREBASE_CONFIG.apiKey;
             }
 
             document.getElementById('admin-bkash-status').checked = adminState.paymentMethods.bkash.enabled;
@@ -1263,18 +1264,15 @@
             Swal.fire({ icon: 'success', title: 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!' });
         }
 
-        // 🚀 অটো লগইন চেক ও রিয়েলটাইম সিঙ্ক
+        // Initialize
         (async function initAdmin() {
+            initAdminFirebase();
             await CloudDatabase.pull();
-            // স্থায়ী লগইন চেক (সকল ডিভাইসে স্থায়ী থাকবে)
-            if (localStorage.getItem('admin_authenticated') === 'true') {
+            if (sessionStorage.getItem('admin_authenticated') === 'true') {
                 document.getElementById('admin-login-screen').classList.add('hidden');
                 document.getElementById('admin-dashboard-container').classList.remove('hidden');
                 renderAdminPanel();
             }
-            setInterval(() => {
-                CloudDatabase.pull();
-            }, 4000);
         })();
     </script>
 </body>
