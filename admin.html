@@ -379,11 +379,10 @@
             </div>
         </div>
 
-        <!-- 10. Withdraw Requests -->
+        <!-- 10. Withdraw Requests (No Clear History Button) -->
         <div id="admin-tab-withdraws" class="hidden space-y-3">
             <div class="flex justify-between items-center">
                 <h3 class="text-xs font-bold text-white">উইথড্র রিকোয়েস্ট ম্যানেজমেন্ট</h3>
-                <button onclick="adminClearWithdrawHistory()" class="text-[11px] text-rose-400 hover:underline">ক্লিয়ার হিস্ট্রি</button>
             </div>
             <div id="admin-withdraw-list" class="space-y-2"></div>
         </div>
@@ -477,6 +476,7 @@
     </div>
 
     <script>
+        // সেন্ট্রাল ক্লাউড সিঙ্ক রিলে
         const CLOUD_SYNC_RELAY = 'https://jsonblob.com/api/jsonBlob/1339578278281084928';
 
         let adminState = {
@@ -525,22 +525,25 @@
         const CloudDatabase = {
             async pull() {
                 try {
-                    if (adminState.firebaseConfig?.databaseURL) {
-                        const cleanUrl = adminState.firebaseConfig.databaseURL.replace(/\/$/, '');
-                        const res = await fetch(`${cleanUrl}/adsearn_pro_v2_data.json`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data) this.applyCloudState(data);
-                            return;
-                        }
-                    }
-
+                    // ১. প্রথমে সেন্ট্রাল রিলে থেকে ডেটা নিয়ে ফায়ারবেস কনফিগ সহ সিঙ্ক করা
                     const res = await fetch(CLOUD_SYNC_RELAY, { headers: { 'Accept': 'application/json' } });
                     if (res.ok) {
                         const data = await res.json();
                         if (data) this.applyCloudState(data);
                     }
-                } catch(e) {}
+
+                    // ২. ফায়ারবেস কনফিগ পাওয়া গেলে সরাসরি ফায়ারবেস থেকে মূল ডাটা পুল করা
+                    if (adminState.firebaseConfig?.databaseURL) {
+                        const cleanUrl = adminState.firebaseConfig.databaseURL.replace(/\/$/, '');
+                        const fbRes = await fetch(`${cleanUrl}/adsearn_pro_v2_data.json`);
+                        if (fbRes.ok) {
+                            const fbData = await fbRes.json();
+                            if (fbData) this.applyCloudState(fbData);
+                        }
+                    }
+                } catch(e) {
+                    console.warn('Sync notice:', e);
+                }
             },
 
             async push() {
@@ -566,7 +569,10 @@
                         paymentMethods: adminState.paymentMethods,
                         supportLink: adminState.supportLink,
                         botToken: adminState.botToken,
-                        theme: adminState.theme
+                        theme: adminState.theme,
+                        monetagZoneId: adminState.monetagZoneId,
+                        monetagSdk: adminState.monetagSdk,
+                        firebaseConfig: adminState.firebaseConfig // ডিভাইস-টু-ডিভাইস সিঙ্ক ঠিক করার চাবিকাঠি
                     },
                     users: adminState.users,
                     withdrawals: adminState.withdrawals,
@@ -574,6 +580,14 @@
                 };
 
                 try {
+                    // সেন্ট্রাল ক্লাউড রিলেতে পুশ
+                    fetch(CLOUD_SYNC_RELAY, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }).catch(() => {});
+
+                    // ফায়ারবেসে পুশ
                     if (adminState.firebaseConfig?.databaseURL) {
                         const cleanUrl = adminState.firebaseConfig.databaseURL.replace(/\/$/, '');
                         fetch(`${cleanUrl}/adsearn_pro_v2_data.json`, {
@@ -582,12 +596,6 @@
                             body: JSON.stringify(payload)
                         }).catch(() => {});
                     }
-
-                    fetch(CLOUD_SYNC_RELAY, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                        body: JSON.stringify(payload)
-                    }).catch(() => {});
                 } catch(e) {}
             },
 
@@ -615,13 +623,18 @@
                     if (c.supportLink) adminState.supportLink = c.supportLink;
                     if (c.botToken) adminState.botToken = c.botToken;
                     if (c.theme) adminState.theme = c.theme;
+                    if (c.monetagZoneId) adminState.monetagZoneId = c.monetagZoneId;
+                    if (c.monetagSdk) adminState.monetagSdk = c.monetagSdk;
+                    if (c.firebaseConfig && c.firebaseConfig.databaseURL) adminState.firebaseConfig = c.firebaseConfig;
                 }
 
                 if (Array.isArray(cloud.withdrawals)) adminState.withdrawals = cloud.withdrawals;
                 if (Array.isArray(cloud.users)) adminState.users = cloud.users;
 
                 saveLocalCache();
-                renderAdminPanel();
+                if (sessionStorage.getItem('admin_authenticated') === 'true') {
+                    renderAdminPanel();
+                }
             }
         };
 
@@ -648,6 +661,9 @@
             localStorage.setItem('dailyBonusHours', adminState.dailyBonusHours);
             localStorage.setItem('targetBonusHours', adminState.targetBonusHours);
             localStorage.setItem('appTheme', adminState.theme);
+            localStorage.setItem('firebaseConfig', JSON.stringify(adminState.firebaseConfig));
+            localStorage.setItem('monetagZoneId', adminState.monetagZoneId);
+            localStorage.setItem('monetagSdk', adminState.monetagSdk);
         }
 
         function saveAdminState() {
@@ -657,9 +673,13 @@
         }
 
         /* Authentication */
-        function handleAdminLogin(e) {
+        async function handleAdminLogin(e) {
             e.preventDefault();
             const pass = document.getElementById('login-pass-input').value.trim();
+            
+            // লগইন করার আগে এক পলক লেটেস্ট ক্লাউড সিঙ্ক নিশ্চিত করা
+            await CloudDatabase.pull();
+
             if (pass === adminState.adminPass) {
                 sessionStorage.setItem('admin_authenticated', 'true');
                 document.getElementById('admin-login-screen').classList.add('hidden');
@@ -680,6 +700,7 @@
 
         function manualCloudSync() {
             CloudDatabase.pull().then(() => {
+                renderAdminPanel();
                 Swal.fire({ icon: 'success', title: 'ডাটাবেজ রিফ্রেশ সম্পন্ন!', timer: 1000, showConfirmButton: false });
             });
         }
@@ -806,7 +827,7 @@
                 apiKey: document.getElementById('admin-firebase-apikey').value.trim()
             };
             saveAdminState();
-            Swal.fire({ icon: 'success', title: 'ডাটাবেজ কনফিগারেশন সেভ হয়েছে!' });
+            Swal.fire({ icon: 'success', title: 'ডাটাবেজ কনফিগারেশন সব ডিভাইসে সিঙ্ক হয়েছে!' });
         }
 
         function adminAddMandatoryGateChannel() {
@@ -1131,11 +1152,6 @@
             }
         }
 
-        function adminClearWithdrawHistory() {
-            adminState.withdrawals = [];
-            saveAdminState();
-        }
-
         function renderAdminTasks() {
             const container = document.getElementById('admin-tasks-container');
             if (!container) return;
@@ -1232,7 +1248,7 @@
             Swal.fire({ icon: 'success', title: 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!' });
         }
 
-        // Initialize
+        // Initialize (Auto Sync on start)
         (async function initAdmin() {
             await CloudDatabase.pull();
             if (sessionStorage.getItem('admin_authenticated') === 'true') {
@@ -1242,7 +1258,7 @@
             }
             setInterval(() => {
                 CloudDatabase.pull();
-            }, 5000);
+            }, 6000);
         })();
     </script>
 </body>
